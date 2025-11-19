@@ -66,16 +66,20 @@ publishing {
             }
         }
     }
+
+    repositories {
+        mavenLocal()
+    }
 }
 
+// Signing configuration for Sonatype publishing (used by GitHub Actions)
+// Optional - only signs when keys are provided via environment variables
 signing {
-    val signingKey = providers.gradleProperty("signingKey").orElse(providers.environmentVariable("SIGNING_KEY"))
-    val signingPassword = providers.gradleProperty("signingPassword").orElse(providers.environmentVariable("SIGNING_PASSWORD"))
+    val signingKey = providers.environmentVariable("SIGNING_KEY")
+    val signingPassword = providers.environmentVariable("SIGNING_PASSWORD")
 
-    // Only require signing for release (non-SNAPSHOT) versions
-    val isReleaseVersion = !version.toString().contains("SNAPSHOT")
-
-    isRequired = isReleaseVersion && signingKey.isPresent && signingPassword.isPresent
+    // Only require signing when credentials are present
+    isRequired = signingKey.isPresent && signingPassword.isPresent
 
     if (signingKey.isPresent && signingPassword.isPresent) {
         useInMemoryPgpKeys(signingKey.get(), signingPassword.get())
@@ -83,21 +87,15 @@ signing {
     }
 }
 
+// Sonatype publishing configuration (used by GitHub Actions)
 nexusPublishing {
     repositories {
         sonatype {
-            // For projects created after Feb 2021 the default host is s01
             nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
             snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
 
-            username.set(
-                providers.gradleProperty("ossrhUsername")
-                    .orElse(providers.environmentVariable("OSSRH_USERNAME"))
-            )
-            password.set(
-                providers.gradleProperty("ossrhPassword")
-                    .orElse(providers.environmentVariable("OSSRH_PASSWORD"))
-            )
+            username.set(providers.environmentVariable("OSSRH_USERNAME"))
+            password.set(providers.environmentVariable("OSSRH_PASSWORD"))
         }
     }
 }
