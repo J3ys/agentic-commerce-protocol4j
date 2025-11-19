@@ -94,15 +94,24 @@ nexusPublishing {
             nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
             snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
 
-            username.set(providers.environmentVariable("OSSRH_USERNAME"))
-            password.set(providers.environmentVariable("OSSRH_PASSWORD"))
+            username.set(providers.environmentVariable("OSSRH_USERNAME").orElse(""))
+            password.set(providers.environmentVariable("OSSRH_PASSWORD").orElse(""))
         }
     }
+
+    // This prevents the plugin from connecting to Sonatype unless explicitly needed
+    this.packageGroup.set(providers.gradleProperty("GROUP"))
 }
 
 // Helpful tasks
 tasks.register("printVersion") {
     doLast { println("${'$'}group:${'$'}{project.name}:${'$'}version") }
+}
+
+tasks.register("publishLocal") {
+    description = "Publish to local Maven repository (no signing or Sonatype)"
+    group = "publishing"
+    dependsOn("publishToMavenLocal")
 }
 
 // OpenAPI generation and schema packaging
