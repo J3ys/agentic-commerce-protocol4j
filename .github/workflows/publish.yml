@@ -46,6 +46,8 @@ jobs:
 
           if [ -n "$SIGNING_KEY" ]; then
             echo "✓ SIGNING_KEY is set (length: ${#SIGNING_KEY})"
+            echo "  Key header: $(echo "$SIGNING_KEY" | head -c 50)..."
+            echo "  Contains newlines: $(echo "$SIGNING_KEY" | grep -c $'\n' || echo '0')"
           else
             echo "✗ SIGNING_KEY is NOT set"
           fi
@@ -56,11 +58,31 @@ jobs:
             echo "✗ SIGNING_PASSWORD is NOT set"
           fi
 
+      - name: Decode signing key if base64 encoded
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          # Check if the key is base64 encoded (doesn't start with -----)
+          if ! echo "$SIGNING_KEY" | head -c 5 | grep -q "^-----"; then
+            echo "SIGNING_KEY appears to be base64 encoded, decoding..."
+            echo "$SIGNING_KEY" | base64 -d > /tmp/signing-key.asc
+            echo "Decoded key preview:"
+            head -n 2 /tmp/signing-key.asc
+            echo "SIGNING_KEY_DECODED<<EOF" >> $GITHUB_ENV
+            cat /tmp/signing-key.asc >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "SIGNING_KEY is already in ASCII-armored format"
+            echo "SIGNING_KEY_DECODED<<EOF" >> $GITHUB_ENV
+            echo "$SIGNING_KEY" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+
       - name: Publish SNAPSHOT to Sonatype
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY: ${{ env.SIGNING_KEY_DECODED }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
           ./gradlew --no-daemon publishToSonatype
@@ -103,6 +125,8 @@ jobs:
 
           if [ -n "$SIGNING_KEY" ]; then
             echo "✓ SIGNING_KEY is set (length: ${#SIGNING_KEY})"
+            echo "  Key header: $(echo "$SIGNING_KEY" | head -c 50)..."
+            echo "  Contains newlines: $(echo "$SIGNING_KEY" | grep -c $'\n' || echo '0')"
           else
             echo "✗ SIGNING_KEY is NOT set"
           fi
@@ -113,11 +137,31 @@ jobs:
             echo "✗ SIGNING_PASSWORD is NOT set"
           fi
 
+      - name: Decode signing key if base64 encoded
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          # Check if the key is base64 encoded (doesn't start with -----)
+          if ! echo "$SIGNING_KEY" | head -c 5 | grep -q "^-----"; then
+            echo "SIGNING_KEY appears to be base64 encoded, decoding..."
+            echo "$SIGNING_KEY" | base64 -d > /tmp/signing-key.asc
+            echo "Decoded key preview:"
+            head -n 2 /tmp/signing-key.asc
+            echo "SIGNING_KEY_DECODED<<EOF" >> $GITHUB_ENV
+            cat /tmp/signing-key.asc >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "SIGNING_KEY is already in ASCII-armored format"
+            echo "SIGNING_KEY_DECODED<<EOF" >> $GITHUB_ENV
+            echo "$SIGNING_KEY" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+
       - name: Publish and Release to Maven Central
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_KEY: ${{ env.SIGNING_KEY_DECODED }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
           ./gradlew --no-daemon publishToSonatype closeAndReleaseSonatypeStagingRepository
